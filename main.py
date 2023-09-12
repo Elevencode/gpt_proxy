@@ -1,17 +1,26 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 import uvicorn
 
+from services.user_service import UserService
+from services.message_service import MessageService
 from repos.socket_repository import SocketRepository
 from repos.gpt_repo import GPTRepo
-from models.message_request import MessageRequest
+from repos.db_repo import DBRepo
+from models.schemas import Message, User
+from models.pydantic_models import MessageBase, UserBase
+from utils.converters import user_pydantic_to_sqlalchemy, message_pydantic_to_sqlalchemy
+from utils.auth import verify_secret_key, verify_socket_connection
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 gpt_repo = GPTRepo()
 socket_repo = SocketRepository()
+db_repo = DBRepo()
+user_service = UserService(repo=db_repo)
+message_service = MessageService(gpt_repo, socket_repo, db_repo)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,21 +29,44 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/", socket_repo.socket_app)
+
+@app.on_event("startup")
+async def startup_event():
+    try:
+        await db_repo.connect()
+        logging.info('connected to DB')
+    except Exception as e:
+        logging.error('error connection')
 
 @socket_repo.sio.on('chat')
-async def chat(data: MessageRequest):
-    text = data.message
-    message_id = data.message_id
+async def chat(sid, data):
+    print(data)
+    message = message_pydantic_to_sqlalchemy(MessageBase(**data))
+    # await message_service.handle_message(message)
+    print(f'Message: {message}')
+    await message_service.mock_handle_message(message)
 
-    async for token in gpt_repo.get_gpt_answer(text):
-        await socket_repo.send_token(token, message_id)
-        print(token)
+@socket_repo.sio.event
+async def connect(sid, environ):
+    auth_result = verify_socket_connection(environ)
+    if auth_result == True:
+        return True
+    else:
+        socket_repo.send_socket_error({'detail': 'Invalid token'})
+        return False
 
-    return {"status" : status.HTTP_200_OK}
+@app.post('/user')
+async def create_user(data: UserBase, key: str = Depends(verify_secret_key)):
+    user = user_pydantic_to_sqlalchemy(data)
+    await user_service.create_user(user)
 
-@app.post('/test12')
-async def test(data: MessageRequest):
-    return await chat(data)
+@app.put('/user')
+async def update_user(data: UserBase, key: str = Depends(verify_secret_key)):
+    user = user_pydantic_to_sqlalchemy(data)
+    await user_service.update_user(user)
+
+
 
 
 # if __name__ == "__main__":
