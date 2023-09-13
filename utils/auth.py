@@ -8,7 +8,14 @@ import ast
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-keys = ast.literal_eval(os.getenv("API_KEYS"))
+# keys = ast.literal_eval(os.getenv("API_KEYS"))
+keys = [
+    os.getenv('API_KEY_1'),
+    os.getenv('API_KEY_2'),
+    os.getenv('API_KEY_3'),
+    os.getenv('API_KEY_4'),
+    os.getenv('API_KEY_5'),
+    ]
 
 def verify_secret_key(request: Request):
     key = request.headers.get("Authorization")

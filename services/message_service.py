@@ -3,6 +3,7 @@ from repos.socket_repository import SocketRepository
 from repos.gpt_repo import GPTRepo
 from models.schemas import Message
 from utils.converters import messages_to_gpt_messages
+from datetime import datetime
 import logging
 import random
 
@@ -24,13 +25,14 @@ class MessageService:
             user_id=message.user_id,
             source='AI',
             channel_id=message.channel_id,
-            related_message_id=message.id
+            related_message_id=message.id,
+            created_at=datetime.now()
         )
 
         try:
             if not await self.db_repo.channel_exists(message.channel_id):
                 await self.db_repo.create_channel(message.channel_id)
-                
+
             await self.db_repo.create_message(message)
             async for token in self.gpt_repo.get_gpt_answer(message.text, gpt_context):
                 await self.socket_repo.send_token(token, message.related_message_id)
