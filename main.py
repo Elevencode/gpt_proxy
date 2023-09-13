@@ -12,10 +12,12 @@ from models.schemas import Message, User
 from models.pydantic_models import MessageBase, UserBase
 from utils.converters import user_pydantic_to_sqlalchemy, message_pydantic_to_sqlalchemy
 from utils.auth import verify_secret_key, verify_socket_connection
+from utils.info import description
 
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI()
+app = FastAPI(title='gpt_proxy', version='1.0.0', description=description)
+
 gpt_repo = GPTRepo()
 socket_repo = SocketRepository()
 db_repo = DBRepo()
@@ -41,11 +43,9 @@ async def startup_event():
 
 @socket_repo.sio.on('chat')
 async def chat(sid, data):
-    print(data)
     message = message_pydantic_to_sqlalchemy(MessageBase(**data))
-    # await message_service.handle_message(message)
-    print(f'Message: {message}')
-    await message_service.mock_handle_message(message)
+    await message_service.handle_message(message)
+    # await message_service.mock_handle_message(message)
 
 @socket_repo.sio.event
 async def connect(sid, environ):
@@ -56,12 +56,12 @@ async def connect(sid, environ):
         socket_repo.send_socket_error({'detail': 'Invalid token'})
         return False
 
-@app.post('/user')
+@app.post('/user', tags=['User'], summary="Creates a new user")
 async def create_user(data: UserBase, key: str = Depends(verify_secret_key)):
     user = user_pydantic_to_sqlalchemy(data)
     await user_service.create_user(user)
 
-@app.put('/user')
+@app.put('/user', tags=['User'], summary="Updates a user")
 async def update_user(data: UserBase, key: str = Depends(verify_secret_key)):
     user = user_pydantic_to_sqlalchemy(data)
     await user_service.update_user(user)

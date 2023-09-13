@@ -2,6 +2,7 @@ from repos.db_repo import DBRepo
 from repos.socket_repository import SocketRepository
 from repos.gpt_repo import GPTRepo
 from models.schemas import Message
+from utils.converters import messages_to_gpt_messages
 import logging
 import random
 
@@ -14,6 +15,9 @@ class MessageService:
         self.db_repo = db_repo
 
     async def handle_message(self, message: Message):
+        context = await self.db_repo.get_messages(message.channel_id, 5)
+        gpt_context = messages_to_gpt_messages(context)
+        print(message.related_message_id)
         answer_message = Message(
             id=message.related_message_id,
             text='',
@@ -24,7 +28,7 @@ class MessageService:
         )
         try:
             await self.db_repo.create_message(message)
-            async for token in self.gpt_repo.get_gpt_answer(message.text):
+            async for token in self.gpt_repo.get_gpt_answer(message.text, gpt_context):
                 await self.socket_repo.send_token(token, message.related_message_id)
                 answer_message.text += token
                 print(token)
@@ -32,10 +36,11 @@ class MessageService:
             await self.socket_repo.send_message_end(answer_message.id)
         except Exception as e:
             logging.exception('Error creating message')
-            self.socket_repo.send_gpt_request_error(answer_message.id, str(e))
+            await self.socket_repo.send_gpt_request_error(answer_message.id, str(e))
             return {'Message': 'Create message error', "status" : type(e).__name__}
         
     async def mock_handle_message(self, message: Message):
+        context = await self.db_repo.get_messages(message.channel_id, 5)
         answer_message = Message(
             id=message.related_message_id,
             text='',

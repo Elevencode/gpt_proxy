@@ -2,8 +2,10 @@ import asyncpg
 import os
 import logging
 from dotenv import load_dotenv
+from typing import List
 
 from models.schemas import User, Message
+from utils.converters import db_record_to_message
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
@@ -80,8 +82,8 @@ class DBRepo:
     
     async def create_message(self, message: Message):
         INSERT_SQL = """
-        INSERT INTO Messages (id, text, user_id, source, created_at, channel_id)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO Messages (id, text, user_id, source, created_at, channel_id, related_message_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         """
         async with self.pool.acquire() as conn:
             await conn.execute(
@@ -91,5 +93,17 @@ class DBRepo:
                 message.user_id,
                 message.source,
                 message.created_at,
-                message.channel_id
+                message.channel_id,
+                message.related_message_id
             )
+    async def get_messages(self, channel_id: str, count: int) -> List[Message]:
+        SELECT_SQL = """
+            SELECT * FROM Messages
+            WHERE channel_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            """
+        async with self.pool.acquire() as conn:
+            result = await conn.fetch(SELECT_SQL, channel_id, count)
+            messages = [db_record_to_message(record) for record in result]
+            return messages

@@ -18,7 +18,6 @@ def verify_secret_key(request: Request):
 
 def verify_socket_connection(environ) -> bool:
     key = environ.get('HTTP_AUTHORIZATION')
-    print(key)
     if not key or key not in keys:
         return False
     return True
