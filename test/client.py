@@ -37,7 +37,7 @@ async def connect():
     'source': 'chat',
     'related_message_id': str(uuid.uuid4()),
     'created_at': datetime.now().isoformat(),
-    'channel_id': 'test_channel_id',
+    'channel_id': str(uuid.uuid4()),
 }
 
     await sio.emit('chat', request)

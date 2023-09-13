@@ -1,0 +1,19 @@
+# Ignore environment settings
+.env
+
+# Ignore tests
+test/
+
+# Ignore Python cache
+__pycache__/
+
+# If you're using other tools or have logs, you might want to ignore those as well
+*.log
+
+# Ignore any bytecode files
+*.pyc
+*.pyo
+
+# If you're using other VCSs like Mercurial or SVN, you might want to ignore those
+*.hg/
+*.svn/

@@ -107,3 +107,45 @@ class DBRepo:
             result = await conn.fetch(SELECT_SQL, channel_id, count)
             messages = [db_record_to_message(record) for record in result]
             return messages
+        
+    
+    async def channel_exists(self, channel_id: str) -> bool:
+        """
+        Checks if the given channel_id exists in the Channels table.
+
+        Params:
+        - channel_id (str): The channel ID to check.
+
+        Returns:
+        - bool: True if the channel exists, False otherwise.
+
+        Usage:
+        >>> exists = await db_repo.channel_exists("12345")
+        >>> print(exists)
+        True
+        """
+        CHECK_SQL = """
+            SELECT EXISTS(
+                SELECT 1 FROM Channels WHERE id = $1
+            )
+            """
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(CHECK_SQL, channel_id)
+
+    async def create_channel(self, channel_id: str):
+        """
+        Inserts a new channel ID into the Channels table.
+
+        Params:
+        - channel_id (str): The channel ID to insert.
+
+        Usage:
+        >>> await db_repo.create_channel("12345")
+        """
+        INSERT_SQL = """
+        INSERT INTO Channels (id)
+        VALUES ($1)
+        ON CONFLICT (id) DO NOTHING
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(INSERT_SQL, channel_id)

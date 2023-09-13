@@ -26,7 +26,11 @@ class MessageService:
             channel_id=message.channel_id,
             related_message_id=message.id
         )
+
         try:
+            if not await self.db_repo.channel_exists(message.channel_id):
+                await self.db_repo.create_channel(message.channel_id)
+                
             await self.db_repo.create_message(message)
             async for token in self.gpt_repo.get_gpt_answer(message.text, gpt_context):
                 await self.socket_repo.send_token(token, message.related_message_id)
