@@ -4,7 +4,7 @@ from typing import Optional
 
 class UserBase(BaseModel):
     id: str
-    telegram_id: str
+    telegram_id: Optional[str]
     name: str
     email: str
     tokens_used: str
