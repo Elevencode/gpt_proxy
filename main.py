@@ -56,12 +56,12 @@ async def connect(sid, environ):
         socket_repo.send_socket_error({'detail': 'Invalid token'})
         return False
 
-@app.post('/user', tags=['User'], summary="Creates a new user")
+@app.post('/user', tags=['User'], summary="Creates a new user", description="This endpoint requires an api_key to be sent in the Authorization Header")
 async def create_user(data: UserBase, key: str = Depends(verify_secret_key)):
     user = user_pydantic_to_sqlalchemy(data)
     await user_service.create_user(user)
 
-@app.put('/user', tags=['User'], summary="Updates a user")
+@app.put('/user', tags=['User'], summary="Updates a user", description="This endpoint requires an api_key to be sent in the Authorization Header")
 async def update_user(data: UserBase, key: str = Depends(verify_secret_key)):
     user = user_pydantic_to_sqlalchemy(data)
     await user_service.update_user(user)
